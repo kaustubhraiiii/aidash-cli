@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aidash"
+version = "0.1.0"
+description = "Track and analyze your usage across AI coding agents"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+]
+
+[project.scripts]
+aidash = "aidash.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["aidash*"]
