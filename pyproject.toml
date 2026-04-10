@@ -9,6 +9,7 @@ description = "Track and analyze your usage across AI coding agents"
 requires-python = ">=3.10"
 dependencies = [
     "click>=8.0",
+    "rich>=13.0",
 ]
 
 [project.scripts]
