@@ -100,8 +100,8 @@ class ClaudeCodeParser(BaseParser):
                     session.cwd = entry["cwd"]
                     # Use cwd for accurate project name (dir heuristic is lossy)
                     session.project = Path(entry["cwd"]).name
-                if not session.model and entry.get("model"):
-                    session.model = entry["model"]
+                if not session.model and msg_data.get("model"):
+                    session.model = msg_data["model"]
 
         return session
 
