@@ -413,13 +413,14 @@ def _score_trend(console: Console) -> None:
 
 
 @cli.command()
+@click.option("--compare", is_flag=True, help="Show what-if cost comparison across agents.")
 @click.option(
     "--period",
     type=click.Choice(["weekly", "monthly", "all"], case_sensitive=False),
     default="all",
     help="Time period to analyze.",
 )
-def rates(period):
+def rates(compare, period):
     """Compare pricing across models and agents."""
     console = Console()
     since = _period_to_since(period)
@@ -430,6 +431,10 @@ def rates(period):
         return
 
     _rates_table(console, sessions, period)
+
+    if compare:
+        console.print()
+        _rates_compare(console, sessions, period)
 
 
 def _rates_table(console: Console, sessions: list[Session], period: str) -> None:
@@ -492,6 +497,83 @@ def _rates_table(console: Console, sessions: list[Session], period: str) -> None
             f"${avg_cost:.4f}",
             f"{cache_hit:.1f}%",
             f"${effective:.2f}/1M",
+        )
+
+    console.print(table)
+
+
+def _rates_compare(console: Console, sessions: list[Session], period: str) -> None:
+    """What-if comparison: what would agent A's usage cost on agent B's pricing."""
+    # Group by agent
+    agent_groups: dict[str, dict] = {}
+    for s in sessions:
+        agent = s.agent
+        if agent not in agent_groups:
+            agent_groups[agent] = {
+                "sessions": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_read": 0,
+                "cache_write": 0,
+                "actual_cost": 0.0,
+            }
+        g = agent_groups[agent]
+        g["sessions"] += 1
+        g["actual_cost"] += _session_cost(s)
+        for msg in s.messages:
+            u = msg.token_usage
+            if not u:
+                continue
+            g["input_tokens"] += u.input_tokens
+            g["output_tokens"] += u.output_tokens
+            g["cache_read"] += u.cache_read_input_tokens
+            g["cache_write"] += u.cache_creation_input_tokens
+
+    claude_pricing = MODEL_PRICING["claude_code"]
+    codex_pricing = MODEL_PRICING["codex"]
+
+    table = Table(
+        title=f"What-If Cost Comparison — {period}",
+        title_style="bold",
+    )
+    table.add_column("Your Agent", style="cyan")
+    table.add_column("Sessions", justify="right")
+    table.add_column("Actual Cost", justify="right", style="bold yellow")
+    table.add_column("If On Claude", justify="right")
+    table.add_column("If On Codex", justify="right")
+    table.add_column("Cheapest", justify="right", style="bold green")
+
+    for agent, g in sorted(agent_groups.items()):
+        inp = g["input_tokens"]
+        out = g["output_tokens"]
+        cr = g["cache_read"]
+        cw = g["cache_write"]
+
+        # Estimate cost on Claude (with caching)
+        cost_claude = (
+            inp * claude_pricing.input_per_million / 1_000_000
+            + out * claude_pricing.output_per_million / 1_000_000
+            + cr * claude_pricing.cache_read_per_million / 1_000_000
+            + cw * claude_pricing.cache_write_per_million / 1_000_000
+        )
+        # Estimate cost on Codex (no caching)
+        cost_codex = (
+            (inp + cr + cw) * codex_pricing.input_per_million / 1_000_000
+            + out * codex_pricing.output_per_million / 1_000_000
+        )
+
+        if cost_claude <= cost_codex:
+            cheapest = "Claude"
+        else:
+            cheapest = "Codex"
+
+        table.add_row(
+            agent,
+            str(g["sessions"]),
+            f"${g['actual_cost']:.4f}",
+            f"${cost_claude:.4f}",
+            f"${cost_codex:.4f}",
+            cheapest,
         )
 
     console.print(table)
