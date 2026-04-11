@@ -20,7 +20,7 @@ class Pricing:
     cache_write_per_million: float = 0.0
 
 
-# Per-agent pricing (USD per 1M tokens)
+# Per-agent pricing (USD per 1M tokens) — keyed by agent name
 MODEL_PRICING: dict[str, Pricing] = {
     "claude_code": Pricing(
         input_per_million=3.00,
@@ -31,6 +31,36 @@ MODEL_PRICING: dict[str, Pricing] = {
     "codex": Pricing(
         input_per_million=2.50,
         output_per_million=10.00,
+    ),
+}
+
+# Per-model pricing (USD per 1M tokens) — keyed by model name
+PER_MODEL_PRICING: dict[str, Pricing] = {
+    "claude-sonnet-4-5": Pricing(
+        input_per_million=3.00,
+        output_per_million=15.00,
+        cache_read_per_million=0.30,
+        cache_write_per_million=3.75,
+    ),
+    "claude-opus-4-6": Pricing(
+        input_per_million=15.00,
+        output_per_million=75.00,
+        cache_read_per_million=1.50,
+        cache_write_per_million=18.75,
+    ),
+    "claude-haiku-4-5": Pricing(
+        input_per_million=0.80,
+        output_per_million=4.00,
+        cache_read_per_million=0.08,
+        cache_write_per_million=1.00,
+    ),
+    "gpt-5.4": Pricing(
+        input_per_million=2.50,
+        output_per_million=10.00,
+    ),
+    "gpt-5.4-mini": Pricing(
+        input_per_million=0.40,
+        output_per_million=1.60,
     ),
 }
 
