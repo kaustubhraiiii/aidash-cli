@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from aidash.config import MODEL_PRICING, Pricing
+from aidash.config import MODEL_PRICING, PER_MODEL_PRICING, Pricing
 from aidash.loader import load_all_sessions
 from aidash.models import Session
 from aidash.scoring import ScoreResult, score_session
@@ -413,9 +413,98 @@ def _score_trend(console: Console) -> None:
 
 
 @cli.command()
-def rates():
+@click.option(
+    "--period",
+    type=click.Choice(["weekly", "monthly", "all"], case_sensitive=False),
+    default="all",
+    help="Time period to analyze.",
+)
+def rates(period):
     """Compare pricing across models and agents."""
-    click.echo("Not implemented yet")
+    console = Console()
+    since = _period_to_since(period)
+    sessions = load_all_sessions(since=since)
+
+    if not sessions:
+        console.print("[dim]No sessions found for the given filters.[/dim]")
+        return
+
+    _rates_table(console, sessions, period)
+
+
+def _rates_table(console: Console, sessions: list[Session], period: str) -> None:
+    """Display per-model rate breakdown from real session data."""
+    # Group sessions by model
+    groups: dict[str, list[Session]] = {}
+    for s in sessions:
+        model = s.model or "unknown"
+        groups.setdefault(model, []).append(s)
+
+    table = Table(
+        title=f"Rate Breakdown by Model — {period}",
+        title_style="bold",
+    )
+    table.add_column("Model", style="cyan")
+    table.add_column("Sessions", justify="right")
+    table.add_column("List In/1M", justify="right")
+    table.add_column("List Out/1M", justify="right")
+    table.add_column("Your Avg/Session", justify="right", style="bold yellow")
+    table.add_column("Cache Hit%", justify="right", style="green")
+    table.add_column("Effective Rate", justify="right", style="bold magenta")
+
+    for model, model_sessions in sorted(groups.items()):
+        pricing = _resolve_model_pricing(model, model_sessions)
+
+        total_cost = 0.0
+        total_input = 0
+        total_output = 0
+        total_cache_read = 0
+        total_cache_write = 0
+
+        for s in model_sessions:
+            total_cost += _session_cost(s)
+            for msg in s.messages:
+                u = msg.token_usage
+                if not u:
+                    continue
+                total_input += u.input_tokens
+                total_output += u.output_tokens
+                total_cache_read += u.cache_read_input_tokens
+                total_cache_write += u.cache_creation_input_tokens
+
+        n = len(model_sessions)
+        avg_cost = total_cost / n if n else 0.0
+
+        # Input vs output ratio
+        all_tokens = total_input + total_cache_read + total_cache_write + total_output
+        # Cache hit rate: cache_read / total_input_side tokens
+        input_side = total_input + total_cache_read + total_cache_write
+        cache_hit = (total_cache_read / input_side * 100) if input_side > 0 else 0.0
+
+        # Effective rate: actual cost / total_tokens * 1M (blended per-million)
+        effective = (total_cost / all_tokens * 1_000_000) if all_tokens > 0 else 0.0
+
+        table.add_row(
+            model,
+            str(n),
+            f"${pricing.input_per_million:.2f}",
+            f"${pricing.output_per_million:.2f}",
+            f"${avg_cost:.4f}",
+            f"{cache_hit:.1f}%",
+            f"${effective:.2f}/1M",
+        )
+
+    console.print(table)
+
+
+def _resolve_model_pricing(model: str, sessions: list[Session]) -> Pricing:
+    """Look up pricing for a model name, falling back to agent pricing."""
+    if model in PER_MODEL_PRICING:
+        return PER_MODEL_PRICING[model]
+    # Fall back to agent-level pricing from first session
+    if sessions:
+        return MODEL_PRICING.get(sessions[0].agent, MODEL_PRICING["claude_code"])
+    return MODEL_PRICING["claude_code"]
 
 
 @cli.command()
