@@ -5,12 +5,31 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aidash"
 version = "0.1.0"
-description = "Track and analyze your usage across AI coding agents"
+description = "Track usage, costs, and efficiency across AI coding agents"
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.10"
+authors = [
+    { name = "Kaustubh Rai", email = "7899kaustubh@gmail.com" },
+]
 dependencies = [
     "click>=8.0",
     "rich>=13.0",
 ]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Topic :: Software Development",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/kaustubhraiiii/aidash"
+Repository = "https://github.com/kaustubhraiiii/aidash"
 
 [project.scripts]
 aidash = "aidash.cli:cli"
