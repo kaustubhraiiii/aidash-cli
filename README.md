@@ -1,108 +1,127 @@
-# aidash
+<p align="center"><img src="aidash/assets/logo.svg" alt="aidash" width="400"></p>
 
-A CLI tool that tracks and analyzes your usage across AI coding agents — Claude Code, Gemini CLI, and OpenAI Codex — from a single command line.
+<p align="center"><em>Track usage, costs, and efficiency across AI coding agents.</em></p>
 
-## Why aidash?
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version 0.1.0">
+</p>
 
-If you use AI coding agents daily, your session data is scattered across different log directories in different formats. aidash reads all of it, normalizes it, and gives you a unified view of your usage patterns, costs, and efficiency — without any configuration.
+---
 
 ## Supported Agents
 
-| Agent | Log Location | Format |
-|-------|-------------|--------|
-| Claude Code | `~/.claude/projects/` | JSONL (one file per session) |
-| Gemini CLI | `~/.gemini/tmp/<hash>/chats/` | JSON/JSONL (per project hash) |
-| OpenAI Codex | `~/.codex/sessions/` or `~/.codex/history.jsonl` | JSONL |
+| Agent        | Log Location                    | Status    |
+|--------------|---------------------------------|-----------|
+| Claude Code  | `~/.claude/projects/`           | Supported |
+| Gemini CLI   | `~/.gemini/tmp/<hash>/chats/`   | Supported |
+| OpenAI Codex | `~/.codex/sessions/`            | Supported |
 
-aidash auto-detects which agents are installed on your machine. No API keys, no config files, no setup.
+aidash auto-detects which agents are installed. No API keys, no config.
 
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/aidash.git
+pip install aidash
+```
+
+### Development
+
+```bash
+git clone https://github.com/kaustubhraiiii/aidash.git
 cd aidash
 pip install -e .
 ```
 
-Requires Python 3.10+.
+## Quick Start
+
+```bash
+aidash                          # show available commands
+aidash cost --period weekly     # last 7 days of spend
+aidash score last               # rate your most recent session
+aidash search "auth"            # full-text search across sessions
+```
 
 ## Commands
 
-### `aidash cost` — Unified Cost Dashboard
-
-See what you're spending across all agents, broken down by agent, project, or model.
-
-```bash
-aidash cost                          # all-time costs
-aidash cost --period weekly          # last 7 days
-aidash cost --period monthly --by agent   # monthly, grouped by agent
-aidash cost --agent claude_code      # filter to one agent
-```
-
-### `aidash replay` — Session Replay
-
-Play back any coding session as a scrollable terminal timeline — prompts, tool calls, file edits, token costs, and timing.
+### `cost`
+Unified cost dashboard across all agents.
 
 ```bash
-aidash replay last                   # most recent session
-aidash replay today                  # all of today's sessions
-aidash replay a1b2c3d4              # session by ID prefix
+aidash cost
+aidash cost --period monthly --by agent
+aidash cost --agent claude_code
 ```
 
-### `aidash score` — Efficiency Score
-
-Rates your sessions on a 0-100 scale based on how effectively you worked with the agent. Tracks improvement over time.
+### `replay`
+Play back a coding session as a scrollable terminal timeline.
 
 ```bash
-aidash score last                    # score your last session
-aidash score --trend                 # weekly trend over last 8 weeks
-aidash score today                   # score all of today's sessions
+aidash replay last
+aidash replay today
+aidash replay a1b2c3d4
 ```
 
-**Scoring methodology:**
-
-- **Prompt-to-completion ratio (30%)** — Fewer prompts relative to agent output means clearer instructions. Ideal: 1 prompt per 3+ agent responses.
-- **Tool call efficiency (25%)** — High repetition of the same tool suggests thrashing. Diverse, purposeful tool use scores higher.
-- **Token density (25%)** — Higher average output per agent response means the agent is doing more meaningful work per turn.
-- **Session focus (20%)** — Using 3-8 distinct tools indicates focused, productive work. Too few or too many suggests unfocused sessions.
-
-### `aidash rates` — Rate Comparison
-
-See what you're actually paying per model based on your real usage patterns, not just list prices. Compare what your sessions would cost on different agents.
+### `score`
+Rate your sessions on a 0-100 efficiency scale.
 
 ```bash
-aidash rates                         # pricing breakdown by model
-aidash rates --compare               # what-if cost comparison across agents
-aidash rates --period monthly        # scoped to last 30 days
+aidash score last
+aidash score --trend
+aidash score today
 ```
 
-### `aidash search` — Session Search
-
-Full-text search across all your sessions from all agents.
+### `rates`
+Compare pricing across models and agents.
 
 ```bash
-aidash search "auth migration"                        # search everything
-aidash search --agent claude_code "database"           # filter by agent
-aidash search --project myapp "OAuth"                  # filter by project
+aidash rates
+aidash rates --compare
+aidash rates --period monthly
 ```
+
+### `search`
+Full-text search across all sessions.
+
+```bash
+aidash search "auth migration"
+aidash search --agent claude_code "database"
+aidash search --project myapp "OAuth"
+```
+
+## Scoring Methodology
+
+| Metric                      | Weight | What it measures                                          |
+|-----------------------------|:------:|-----------------------------------------------------------|
+| Prompt-to-completion ratio  | 30%    | Clarity of instructions — fewer prompts per agent reply.  |
+| Tool call efficiency        | 25%    | Diverse, purposeful tool use vs. repetitive thrashing.    |
+| Token density               | 25%    | Average meaningful output per agent turn.                 |
+| Session focus               | 20%    | Sweet spot of 3–8 distinct tools per session.             |
 
 ## How It Works
 
-aidash is a read-only tool. It discovers and parses the local log files that each AI coding agent already writes to disk:
-
-1. **Detection** — Checks for `~/.claude/`, `~/.gemini/tmp/`, and `~/.codex/` directories
-2. **Parsing** — Reads JSONL/JSON session files, extracts messages, token counts, tool calls, and timestamps
-3. **Normalization** — Maps each agent's format into a common data model (Session, Message, TokenUsage, ToolCall)
-4. **Analysis** — Calculates costs, efficiency scores, and comparisons using the normalized data
-
-**aidash never modifies, deletes, or writes to any log files.** It is strictly read-only.
+- **Detection** — Scans for `~/.claude/`, `~/.gemini/tmp/`, and `~/.codex/`.
+- **Parsing** — Reads JSONL/JSON session files for messages, tokens, tool calls, timestamps.
+- **Normalization** — Maps each agent's format into a common model (Session, Message, TokenUsage, ToolCall).
+- **Analysis** — Computes costs, efficiency scores, and what-if comparisons. Strictly read-only.
 
 ## Tech Stack
 
-- Python 3.10+
-- [Click](https://click.palletsprojects.com/) — CLI framework
-- [Rich](https://rich.readthedocs.io/) — Terminal formatting and tables
+- **Python** 3.10+
+- **[Click](https://click.palletsprojects.com/)** 8.0+ — CLI framework
+- **[Rich](https://rich.readthedocs.io/)** 13.0+ — terminal UI
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/my-feature`)
+3. Commit your changes (`git commit -am 'Add my feature'`)
+4. Push the branch (`git push origin feat/my-feature`)
+5. Open a Pull Request
+
+Bugs and feature requests welcome via [Issues](https://github.com/kaustubhraiiii/aidash/issues).
 
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 Kaustubh Rai
