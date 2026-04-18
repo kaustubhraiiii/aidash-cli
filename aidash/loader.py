@@ -8,10 +8,12 @@ from aidash.models import Session
 from aidash.parsers.base import BaseParser
 from aidash.parsers.claude import ClaudeCodeParser
 from aidash.parsers.codex import CodexParser
+from aidash.parsers.gemini import GeminiCliParser
 
 PARSER_MAP: dict[str, type[BaseParser]] = {
     "claude_code": ClaudeCodeParser,
     "codex": CodexParser,
+    "gemini_cli": GeminiCliParser,
 }
 
 

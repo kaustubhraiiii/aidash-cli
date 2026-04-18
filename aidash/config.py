@@ -9,6 +9,7 @@ AGENT_PATHS: dict[str, list[Path]] = {
         Path.home() / ".codex" / "sessions",
         Path.home() / ".codex" / "history.jsonl",
     ],
+    "gemini_cli": [Path.home() / ".gemini" / "tmp"],
 }
 
 
@@ -31,6 +32,11 @@ MODEL_PRICING: dict[str, Pricing] = {
     "codex": Pricing(
         input_per_million=2.50,
         output_per_million=10.00,
+    ),
+    "gemini_cli": Pricing(
+        input_per_million=1.25,
+        output_per_million=10.00,
+        cache_read_per_million=0.315,
     ),
 }
 
@@ -61,6 +67,16 @@ PER_MODEL_PRICING: dict[str, Pricing] = {
     "gpt-5.4-mini": Pricing(
         input_per_million=0.40,
         output_per_million=1.60,
+    ),
+    "gemini-2.5-pro": Pricing(
+        input_per_million=1.25,
+        output_per_million=10.00,
+        cache_read_per_million=0.315,
+    ),
+    "gemini-2.5-flash": Pricing(
+        input_per_million=0.15,
+        output_per_million=0.60,
+        cache_read_per_million=0.0375,
     ),
 }
 
