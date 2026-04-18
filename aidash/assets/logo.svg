@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80" width="400" height="80" role="img" aria-label="aidash">
+  <!-- Ascending bar chart: represents tracking + growth -->
+  <g transform="translate(50, 22)">
+    <rect x="0"  y="22" width="7" height="14" rx="1.5" fill="#9CE89C"/>
+    <rect x="11" y="14" width="7" height="22" rx="1.5" fill="#77DD77"/>
+    <rect x="22" y="6"  width="7" height="30" rx="1.5" fill="#5BC468"/>
+    <rect x="33" y="0"  width="7" height="36" rx="1.5" fill="#3FA85A"/>
+    <rect x="-3" y="38" width="46" height="1.5" rx="0.75" fill="#77DD77" opacity="0.35"/>
+  </g>
+  <!-- Wordmark: "ai" deeper green anchor, "dash" brand light green -->
+  <text x="115" y="54"
+        font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, 'Helvetica Neue', Arial, sans-serif"
+        font-size="42" font-weight="800" letter-spacing="-1.5"
+        fill="#3FA85A">ai<tspan fill="#77DD77">dash</tspan></text>
+</svg>
