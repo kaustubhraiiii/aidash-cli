@@ -1,16 +1,103 @@
 """Main CLI entry point with Click group."""
 
+import shutil
 from datetime import date, datetime, timedelta
 
 import click
 from rich.console import Console
+from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
-from aidash.config import MODEL_PRICING, PER_MODEL_PRICING, Pricing
-from aidash.loader import load_all_sessions
+from aidash.config import MODEL_PRICING, PER_MODEL_PRICING, Pricing, detect_agents
+from aidash.loader import PARSER_MAP, load_all_sessions
 from aidash.models import Session
 from aidash.scoring import ScoreResult, score_session
+
+VERSION = "0.1.0"
+BRAND_GREEN = "#5CB85C"
+
+LOGO = (
+    " █████  ██ ██████   █████  ███████ ██   ██\n"
+    "██   ██ ██ ██   ██ ██   ██ ██      ██   ██\n"
+    "███████ ██ ██   ██ ███████ ███████ ███████\n"
+    "██   ██ ██ ██   ██ ██   ██      ██ ██   ██\n"
+    "██   ██ ██ ██████  ██   ██ ███████ ██   ██"
+)
+
+_AGENT_DISPLAY = [
+    ("claude_code", "Claude Code", "~/.claude/projects/"),
+    ("gemini_cli", "Gemini CLI", "~/.gemini/tmp/"),
+    ("codex", "Codex", "~/.codex/sessions/"),
+]
+
+_COMMAND_DISPLAY = [
+    ("cost", "View spending across all agents"),
+    ("replay", "Play back any session as a timeline"),
+    ("score", "Rate your efficiency per session"),
+    ("rates", "Compare model pricing from real usage"),
+    ("search", "Search across all sessions"),
+]
+
+
+def _show_welcome() -> None:
+    console = _console()
+    console.print(LOGO, style=BRAND_GREEN, markup=False, highlight=False)
+    console.print()
+    console.print(
+        "Track usage, costs, and efficiency across AI coding agents",
+        style="dim white",
+    )
+    console.print(Rule(style=BRAND_GREEN))
+    console.print()
+
+    detected = set(detect_agents())
+    counts: dict[str, int] = {}
+    for agent in detected:
+        parser_cls = PARSER_MAP.get(agent)
+        if parser_cls is None:
+            continue
+        try:
+            counts[agent] = len(parser_cls().discover_sessions())
+        except Exception:
+            counts[agent] = 0
+
+    console.print("[bold]Detected Agents[/bold]")
+    agents_table = Table(show_header=False, box=None, padding=(0, 2))
+    agents_table.add_column(style=BRAND_GREEN, no_wrap=True)
+    agents_table.add_column(no_wrap=True)
+    agents_table.add_column(justify="right", no_wrap=True)
+    for key, label, path in _AGENT_DISPLAY:
+        if key in detected:
+            agents_table.add_row(
+                label,
+                f"[dim]{path}[/dim]",
+                f"{counts.get(key, 0)} sessions",
+            )
+        else:
+            agents_table.add_row(label, "[dim]not detected[/dim]", "")
+    console.print(agents_table)
+    console.print()
+
+    console.print("[bold]Commands[/bold]")
+    cmd_table = Table(show_header=False, box=None, padding=(0, 2))
+    cmd_table.add_column(style=BRAND_GREEN, no_wrap=True)
+    cmd_table.add_column()
+    for name, desc in _COMMAND_DISPLAY:
+        cmd_table.add_row(name, desc)
+    console.print(cmd_table)
+    console.print()
+
+    console.print(
+        "[dim]Run 'aidash <command> --help' for details on any command[/dim]"
+    )
+
+
+def _print_version(ctx: click.Context, param: click.Parameter, value: bool) -> None:
+    if not value or ctx.resilient_parsing:
+        return
+    Console().print(f"aidash v{VERSION}", style=BRAND_GREEN)
+    ctx.exit()
 
 
 def _session_cost(session: Session) -> float:
@@ -55,10 +142,65 @@ def _fmt_tokens(n: int) -> str:
     return str(n)
 
 
-@click.group()
-@click.version_option(version="0.1.0")
-def cli():
+def _console() -> Console:
+    """Rich Console with output width capped at 120 cols on wide terminals."""
+    width = shutil.get_terminal_size((120, 24)).columns
+    return Console(width=min(width, 120))
+
+
+def _no_sessions_message(
+    console: Console,
+    *,
+    filters: dict[str, str | None] | None = None,
+    suggestion: str = "Try removing filters or expanding --period.",
+) -> None:
+    """Print a friendly diagnostic when filters yield no sessions."""
+    detected = detect_agents()
+
+    console.print()
+    console.print("[yellow]No sessions matched.[/yellow]")
+
+    if filters:
+        active = {
+            k: v for k, v in filters.items() if v not in (None, "", "all")
+        }
+        if active:
+            parts = ", ".join(f"{k}={v}" for k, v in active.items())
+            console.print(f"  [dim]Active filters: {parts}[/dim]")
+
+    if detected:
+        labels = []
+        for agent in detected:
+            try:
+                count = len(PARSER_MAP[agent]().discover_sessions())
+            except Exception:
+                count = 0
+            label = next((l for k, l, _ in _AGENT_DISPLAY if k == agent), agent)
+            labels.append(f"{label} ({count})")
+        console.print(f"  [dim]Detected agents: {', '.join(labels)}[/dim]")
+    else:
+        console.print(
+            "  [dim]No agents detected. aidash looks for "
+            "~/.claude/, ~/.codex/, and ~/.gemini/tmp/[/dim]"
+        )
+
+    console.print(f"  [dim]{suggestion}[/dim]")
+
+
+@click.group(invoke_without_command=True)
+@click.option(
+    "--version",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=_print_version,
+    help="Show version and exit.",
+)
+@click.pass_context
+def cli(ctx: click.Context):
     """aidash — Track and analyze your usage across AI coding agents."""
+    if ctx.invoked_subcommand is None:
+        _show_welcome()
 
 
 @cli.command()
@@ -78,14 +220,17 @@ def cli():
 @click.option("--agent", default=None, help="Filter to a specific agent.")
 def cost(period, group_by, agent):
     """Unified cost dashboard across all agents."""
-    console = Console()
+    console = _console()
     since = _period_to_since(period)
     agents_filter = [agent] if agent else None
 
     sessions = load_all_sessions(agents=agents_filter, since=since)
 
     if not sessions:
-        console.print("[dim]No sessions found for the given filters.[/dim]")
+        _no_sessions_message(
+            console,
+            filters={"period": period, "agent": agent},
+        )
         return
 
     if group_by:
@@ -192,15 +337,17 @@ def replay(target):
 
     TARGET can be "last", "today", or a session ID substring.
     """
-    console = Console()
+    console = _console()
 
     if target == "today":
         sessions = load_all_sessions(since=date.today().isoformat())
+        filters = {"target": "today"}
     else:
         sessions = load_all_sessions()
+        filters = None
 
     if not sessions:
-        console.print("[dim]No sessions found.[/dim]")
+        _no_sessions_message(console, filters=filters)
         return
 
     if target == "last":
@@ -210,7 +357,11 @@ def replay(target):
     else:
         to_replay = [s for s in sessions if target in s.id]
         if not to_replay:
-            console.print(f"[red]No session matching '{target}'[/red]")
+            _no_sessions_message(
+                console,
+                filters={"id_match": target},
+                suggestion="Check the session ID (try 'aidash search' to find one).",
+            )
             return
 
     with console.pager(styles=True):
@@ -288,11 +439,14 @@ def _render_session(console: Console, session: Session) -> None:
 
 
 @cli.command()
-@click.option("--target", default="last", help="'last', 'today', 'all', or session ID substring.")
+@click.argument("target", default="last")
 @click.option("--trend", is_flag=True, help="Show week-over-week score trend.")
 def score(target, trend):
-    """Rate your sessions on a 0-100 efficiency scale."""
-    console = Console()
+    """Rate your sessions on a 0-100 efficiency scale.
+
+    TARGET can be "last", "today", "all", or a session ID substring.
+    """
+    console = _console()
 
     if trend:
         _score_trend(console)
@@ -300,7 +454,7 @@ def score(target, trend):
 
     sessions = load_all_sessions()
     if not sessions:
-        console.print("[dim]No sessions found.[/dim]")
+        _no_sessions_message(console)
         return
 
     if target == "last":
@@ -308,12 +462,19 @@ def score(target, trend):
     elif target == "today":
         today_str = date.today().isoformat()
         to_score = load_all_sessions(since=today_str)
+        if not to_score:
+            _no_sessions_message(console, filters={"target": "today"})
+            return
     elif target == "all":
         to_score = sessions
     else:
         to_score = [s for s in sessions if target in s.id]
         if not to_score:
-            console.print(f"[red]No session matching '{target}'[/red]")
+            _no_sessions_message(
+                console,
+                filters={"id_match": target},
+                suggestion="Check the session ID (try 'aidash search' to find one).",
+            )
             return
 
     for s in to_score:
@@ -348,7 +509,11 @@ def _render_score(console: Console, session: Session) -> None:
     )
     console.print()
 
-    table = Table(show_header=True, box=None, padding=(0, 2))
+    table = Table(
+        show_header=True,
+        box=None,
+        padding=(0, 2),
+    )
     table.add_column("Metric", style="bold")
     table.add_column("Raw", justify="right")
     table.add_column("Score", justify="right")
@@ -374,7 +539,7 @@ def _render_score(console: Console, session: Session) -> None:
 def _score_trend(console: Console) -> None:
     sessions = load_all_sessions()
     if not sessions:
-        console.print("[dim]No sessions found.[/dim]")
+        _no_sessions_message(console)
         return
 
     # Group by ISO week
@@ -391,7 +556,10 @@ def _score_trend(console: Console) -> None:
     sorted_weeks = sorted(weeks.keys())[-8:]
 
     if not sorted_weeks:
-        console.print("[dim]No datable sessions found.[/dim]")
+        _no_sessions_message(
+            console,
+            suggestion="Sessions exist but none have parseable timestamps for trending.",
+        )
         return
 
     console.print("[bold]Weekly Score Trend[/bold]")
@@ -422,12 +590,12 @@ def _score_trend(console: Console) -> None:
 )
 def rates(compare, period):
     """Compare pricing across models and agents."""
-    console = Console()
+    console = _console()
     since = _period_to_since(period)
     sessions = load_all_sessions(since=since)
 
     if not sessions:
-        console.print("[dim]No sessions found for the given filters.[/dim]")
+        _no_sessions_message(console, filters={"period": period})
         return
 
     _rates_table(console, sessions, period)
@@ -438,8 +606,7 @@ def rates(compare, period):
 
 
 def _rates_table(console: Console, sessions: list[Session], period: str) -> None:
-    """Display per-model rate breakdown from real session data."""
-    # Group sessions by model
+    """Display per-model rate breakdown computed from real session data."""
     groups: dict[str, list[Session]] = {}
     for s in sessions:
         model = s.model or "unknown"
@@ -451,11 +618,12 @@ def _rates_table(console: Console, sessions: list[Session], period: str) -> None
     )
     table.add_column("Model", style="cyan")
     table.add_column("Sessions", justify="right")
-    table.add_column("List In/1M", justify="right")
-    table.add_column("List Out/1M", justify="right")
-    table.add_column("Your Avg/Session", justify="right", style="bold yellow")
+    table.add_column("In/1M", justify="right")
+    table.add_column("Out/1M", justify="right")
+    table.add_column("Avg/Session", justify="right", style="bold yellow")
+    table.add_column("I/O Ratio", justify="right")
     table.add_column("Cache Hit%", justify="right", style="green")
-    table.add_column("Effective Rate", justify="right", style="bold magenta")
+    table.add_column("Eff. Rate/1M", justify="right", style="bold magenta")
 
     for model, model_sessions in sorted(groups.items()):
         pricing = _resolve_model_pricing(model, model_sessions)
@@ -480,13 +648,13 @@ def _rates_table(console: Console, sessions: list[Session], period: str) -> None
         n = len(model_sessions)
         avg_cost = total_cost / n if n else 0.0
 
-        # Input vs output ratio
-        all_tokens = total_input + total_cache_read + total_cache_write + total_output
-        # Cache hit rate: cache_read / total_input_side tokens
+        io_total = total_input + total_output
+        io_ratio = (total_input / io_total * 100) if io_total > 0 else 0.0
+
         input_side = total_input + total_cache_read + total_cache_write
         cache_hit = (total_cache_read / input_side * 100) if input_side > 0 else 0.0
 
-        # Effective rate: actual cost / total_tokens * 1M (blended per-million)
+        all_tokens = input_side + total_output
         effective = (total_cost / all_tokens * 1_000_000) if all_tokens > 0 else 0.0
 
         table.add_row(
@@ -495,8 +663,9 @@ def _rates_table(console: Console, sessions: list[Session], period: str) -> None
             f"${pricing.input_per_million:.2f}",
             f"${pricing.output_per_million:.2f}",
             f"${avg_cost:.4f}",
+            f"{io_ratio:.0f}%",
             f"{cache_hit:.1f}%",
-            f"${effective:.2f}/1M",
+            f"${effective:.2f}",
         )
 
     console.print(table)
@@ -529,8 +698,15 @@ def _rates_compare(console: Console, sessions: list[Session], period: str) -> No
             g["cache_read"] += u.cache_read_input_tokens
             g["cache_write"] += u.cache_creation_input_tokens
 
-    claude_pricing = MODEL_PRICING["claude_code"]
-    codex_pricing = MODEL_PRICING["codex"]
+    comparators = [
+        (label, MODEL_PRICING[key])
+        for label, key in (
+            ("Claude", "claude_code"),
+            ("Gemini", "gemini_cli"),
+            ("Codex", "codex"),
+        )
+        if key in MODEL_PRICING
+    ]
 
     table = Table(
         title=f"What-If Cost Comparison — {period}",
@@ -539,8 +715,8 @@ def _rates_compare(console: Console, sessions: list[Session], period: str) -> No
     table.add_column("Your Agent", style="cyan")
     table.add_column("Sessions", justify="right")
     table.add_column("Actual Cost", justify="right", style="bold yellow")
-    table.add_column("If On Claude", justify="right")
-    table.add_column("If On Codex", justify="right")
+    for label, _ in comparators:
+        table.add_column(f"If {label}", justify="right")
     table.add_column("Cheapest", justify="right", style="bold green")
 
     for agent, g in sorted(agent_groups.items()):
@@ -549,30 +725,29 @@ def _rates_compare(console: Console, sessions: list[Session], period: str) -> No
         cr = g["cache_read"]
         cw = g["cache_write"]
 
-        # Estimate cost on Claude (with caching)
-        cost_claude = (
-            inp * claude_pricing.input_per_million / 1_000_000
-            + out * claude_pricing.output_per_million / 1_000_000
-            + cr * claude_pricing.cache_read_per_million / 1_000_000
-            + cw * claude_pricing.cache_write_per_million / 1_000_000
-        )
-        # Estimate cost on Codex (no caching)
-        cost_codex = (
-            (inp + cr + cw) * codex_pricing.input_per_million / 1_000_000
-            + out * codex_pricing.output_per_million / 1_000_000
-        )
+        estimates: list[tuple[str, float]] = []
+        for label, pricing in comparators:
+            cost = (
+                inp * pricing.input_per_million / 1_000_000
+                + out * pricing.output_per_million / 1_000_000
+                + cr * pricing.cache_read_per_million / 1_000_000
+                + cw * pricing.cache_write_per_million / 1_000_000
+            )
+            # Agents without caching charge cache tokens at input rate
+            if pricing.cache_read_per_million == 0.0:
+                cost = (
+                    (inp + cr + cw) * pricing.input_per_million / 1_000_000
+                    + out * pricing.output_per_million / 1_000_000
+                )
+            estimates.append((label, cost))
 
-        if cost_claude <= cost_codex:
-            cheapest = "Claude"
-        else:
-            cheapest = "Codex"
+        cheapest = min(estimates, key=lambda x: x[1])[0]
 
         table.add_row(
             agent,
             str(g["sessions"]),
             f"${g['actual_cost']:.4f}",
-            f"${cost_claude:.4f}",
-            f"${cost_codex:.4f}",
+            *[f"${c:.4f}" for _, c in estimates],
             cheapest,
         )
 
@@ -599,7 +774,7 @@ def search(query, agent, project, limit):
 
     QUERY is a required search term matched against user messages and tool names.
     """
-    console = Console()
+    console = _console()
     agents_filter = [agent] if agent else None
     sessions = load_all_sessions(agents=agents_filter, project=project)
 
@@ -634,10 +809,17 @@ def search(query, agent, project, limit):
     scored = scored[:limit]
 
     if not scored:
-        console.print(f"[dim]No sessions matching '{query}'.[/dim]")
+        _no_sessions_message(
+            console,
+            filters={"query": query, "agent": agent, "project": project},
+            suggestion="Try a broader query or remove --agent/--project filters.",
+        )
         return
 
-    table = Table(title=f"Search: \"{query}\"", title_style="bold")
+    table = Table(
+        title=f"Search: \"{query}\"",
+        title_style="bold",
+    )
     table.add_column("#", style="dim", no_wrap=True)
     table.add_column("Date", style="cyan", no_wrap=True)
     table.add_column("Agent")
