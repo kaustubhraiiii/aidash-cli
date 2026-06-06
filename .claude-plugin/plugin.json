@@ -1,0 +1,8 @@
+{
+  "name": "aidash",
+  "version": "0.2.0",
+  "description": "Track usage, costs, and efficiency across AI coding agents",
+  "author": { "name": "Kaustubh Rai", "email": "7899kaustubh@gmail.com" },
+  "homepage": "https://github.com/kaustubhraiiii/aidash",
+  "commands": "./commands"
+}

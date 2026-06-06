@@ -1,0 +1,11 @@
+{
+  "name": "aidash",
+  "owner": { "name": "Kaustubh Rai" },
+  "plugins": [
+    {
+      "name": "aidash",
+      "source": "./",
+      "description": "Track usage, costs, and efficiency across AI coding agents"
+    }
+  ]
+}
