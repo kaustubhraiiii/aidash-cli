@@ -39,3 +39,4 @@ htmlcov/
 node_modules/
 frontend/dist/
 *.tsbuildinfo
+.gstack/

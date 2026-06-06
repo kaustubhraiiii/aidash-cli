@@ -1,17 +1,12 @@
-// Shared termcn component wrappers. Thin re-exports; views import from here so
-// swapping the underlying lib later touches one file.
-//
-// TODO(termcn): the entire @termcn/* scope is unpublished on the public npm
-// registry (table, bar-chart, spinner, alert, badge all 404 as of 2026-06-06).
-// The intended exports are stubbed below until the source of these packages is
-// resolved (private registry, rename, or hand-built wrappers). Views currently
-// render with `ink` primitives directly and do not import this barrel yet, so
-// these stubs do not affect the build.
-//
-//   export { default as Table } from "@termcn/table";
-//   export { default as BarChart } from "@termcn/bar-chart";
-//   export { default as Spinner } from "@termcn/spinner";
-//   export { default as Alert } from "@termcn/alert";
-//   export { default as Badge } from "@termcn/badge";
-
-export {};
+// Shared termcn component barrel. Components are vendored under ui/ via the
+// shadcn CLI (`npx shadcn@latest add @termcn/<name>`) and registered through
+// frontend/components.json. Views import from here so the component surface
+// lives in one place.
+export { Table } from "@/components/ui/table";
+export { BarChart } from "@/components/ui/bar-chart";
+export { Spinner } from "@/components/ui/spinner";
+export { Alert } from "@/components/ui/alert";
+export { Badge } from "@/components/ui/badge";
+export { TokenUsage, ContextMeter } from "@/components/ui/token-usage";
+export { ToolCall } from "@/components/ui/tool-call";
+export { ThemeProvider, useTheme } from "@/components/ui/theme-provider";

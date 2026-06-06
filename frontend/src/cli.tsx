@@ -1,6 +1,6 @@
-#!/usr/bin/env node
-import React from "react";
 import { render, Text } from "ink";
+import { ThemeProvider } from "@/components/ui/theme-provider";
+import { defaultTheme } from "@/lib/terminal-themes/default";
 import { CostView } from "./views/cost.js";
 import { ReplayView } from "./views/replay.js";
 import { ScoreView } from "./views/score.js";
@@ -29,7 +29,11 @@ function main() {
   }
 
   const View = VIEWS[command as Cmd];
-  render(<View args={args} />);
+  render(
+    <ThemeProvider theme={defaultTheme}>
+      <View args={args} />
+    </ThemeProvider>,
+  );
 }
 
 main();

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { runEngine, EngineError } from "../engine.js";
+import { Spinner, Alert } from "@/components";
 import type { RatesData } from "../types/index.js";
 
 export function RatesView({ args }: { args: string[] }) {
@@ -13,9 +14,19 @@ export function RatesView({ args }: { args: string[] }) {
       .catch((e) => setError(e as EngineError));
   }, []);
 
-  if (error) return <Text color="red">aidash error: {error.message}</Text>;
-  if (!data) return <Text>Loading rates…</Text>;
-  if (data.empty) return <Text color="yellow">{data.empty.suggestion}</Text>;
+  if (error)
+    return (
+      <Alert variant="error" title="aidash error">
+        {error.message}
+      </Alert>
+    );
+  if (!data) return <Spinner label="Loading rates…" />;
+  if (data.empty)
+    return (
+      <Alert variant="warning" title="No sessions matched">
+        {data.empty.suggestion}
+      </Alert>
+    );
 
   return (
     <Box flexDirection="column">

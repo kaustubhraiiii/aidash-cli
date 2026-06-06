@@ -10,8 +10,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "start": "node dist/cli.js"
   },
@@ -20,6 +20,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "cli-spinners": "^2.9.2",
     "ink": "^7.0.5",
     "ink-chart": "^0.1.1",
     "ink-scroll-view": "^0.3.7",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@types/node": "^25.9.2",
     "@types/react": "^19.2.17",
+    "tsup": "^8.5.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   }
