@@ -42,7 +42,7 @@ describe('--json spawnSync passthrough', () => {
 
   beforeEach(() => {
     vi.resetModules()
-    mockExit = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => {
+    mockExit = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string | null) => {
       throw new Error('process.exit called')
     })
   })
