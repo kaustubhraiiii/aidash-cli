@@ -7,7 +7,7 @@ import minimist from "minimist";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { defaultTheme } from "@/lib/terminal-themes/default";
 import { Alert } from "@/components";
-import { EngineError } from "./engine.js";
+import { EngineError, PYTHON_BIN } from "./engine.js";
 import { CostView } from "./views/cost.js";
 import { ReplayView } from "./views/replay.js";
 import { ScoreView } from "./views/score.js";
@@ -27,9 +27,9 @@ class EngineErrorBoundary extends React.Component<
 > {
   state: EngineErrorBoundaryState = { error: null };
 
-  static getDerivedStateFromError(e: unknown): EngineErrorBoundaryState | null {
+  static getDerivedStateFromError(e: unknown): EngineErrorBoundaryState {
     if (e instanceof EngineError) return { error: e };
-    return null; // let non-EngineErrors propagate
+    throw e; // actually propagate to parent
   }
 
   render(): React.ReactNode {
@@ -65,7 +65,8 @@ export function App({ args }: { args: string[] }): React.ReactElement | null {
     string: ["period", "by", "agent", "project", "limit"],
   });
   const command = parsed._[0] as string | undefined;
-  const restArgs = command ? args.slice(1) : [];
+  const cmdIndex = command ? args.indexOf(command) : -1;
+  const restArgs = cmdIndex >= 0 ? args.slice(cmdIndex + 1) : [];
 
   let view: React.ReactElement;
 
@@ -101,18 +102,17 @@ export function App({ args }: { args: string[] }): React.ReactElement | null {
 // Entry point
 // ---------------------------------------------------------------------------
 
-const PYTHON_BIN = process.env["AIDASH_PYTHON"] ?? "python3";
-
 function main(): void {
   const rawArgs = process.argv.slice(2);
 
   // --json passthrough: skip Ink entirely
   if (rawArgs.includes("--json")) {
-    const [command, ...rest] = rawArgs;
-    const filteredArgs = rest.filter((a) => a !== "--json");
+    const jsonParsed = minimist(rawArgs.filter((a) => a !== "--json"));
+    const command = (jsonParsed._[0] as string | undefined) ?? "cost";
+    const filteredArgs = rawArgs.filter((a) => a !== "--json" && a !== command);
     const result = spawnSync(
       PYTHON_BIN,
-      ["-m", "aidash", command ?? "cost", ...filteredArgs, "--json"],
+      ["-m", "aidash", command, ...filteredArgs, "--json"],
       { stdio: "inherit" },
     );
     process.exit(result.status ?? 1);
@@ -144,12 +144,6 @@ function main(): void {
 // Only run main when this file is the entry point (not when imported in tests).
 // Compare the resolved path of this module against process.argv[1].
 const __filename = fileURLToPath(import.meta.url);
-const entry = process.argv[1];
-if (
-  entry !== undefined &&
-  (entry === __filename ||
-    entry.endsWith("/cli.js") ||
-    entry.endsWith("/cli.tsx"))
-) {
+if (process.argv[1] === __filename) {
   main();
 }
