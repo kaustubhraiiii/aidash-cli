@@ -102,7 +102,7 @@ export function App({ args }: { args: string[] }): React.ReactElement | null {
 // Entry point
 // ---------------------------------------------------------------------------
 
-function main(): void {
+export function main(): void {
   const rawArgs = process.argv.slice(2);
 
   // --json passthrough: skip Ink entirely

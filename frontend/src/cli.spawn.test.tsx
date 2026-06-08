@@ -3,7 +3,7 @@
  * Lives in a separate file so its vi.mock('node:child_process') doesn't
  * interfere with the existing cli.test.tsx mocks.
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render } from 'ink-testing-library'
 import React from 'react'
 
@@ -35,19 +35,50 @@ vi.mock('./engine.js', () => ({
   },
 }))
 
-const { App } = await import('./cli.js')
-
 describe('--json spawnSync passthrough', () => {
-  it('App returns null (empty frame) when --json flag is present', () => {
-    // App returns null for --json args; spawnSync is only called from main()
-    // which is guarded by the entry-point check (process.argv[1] === __filename).
-    // We verify App's side of the contract here.
-    const { lastFrame } = render(React.createElement(App, { args: ['cost', '--json'] }))
-    expect((lastFrame() ?? '').trim()).toBe('')
+  const origArgv = process.argv
+
+  let mockExit: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.resetModules()
+    mockExit = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => {
+      throw new Error('process.exit called')
+    })
   })
 
-  it('App returns null for flag-before-command style --json cost', () => {
-    const { lastFrame } = render(React.createElement(App, { args: ['--json', 'cost'] }))
+  afterEach(() => {
+    process.argv = origArgv
+    mockExit.mockRestore()
+  })
+
+  it('calls spawnSync with correct args when --json follows command', async () => {
+    process.argv = ['node', '/path/cli.js', 'cost', '--json']
+    const { spawnSync } = await import('node:child_process')
+    const { main } = await import('./cli.js')
+    try { main() } catch {}
+    expect(spawnSync).toHaveBeenCalledWith(
+      'python3',
+      ['-m', 'aidash', 'cost', '--json'],
+      { stdio: 'inherit' }
+    )
+  })
+
+  it('calls spawnSync with correct args when --json precedes command', async () => {
+    process.argv = ['node', '/path/cli.js', '--json', 'cost']
+    const { spawnSync } = await import('node:child_process')
+    const { main } = await import('./cli.js')
+    try { main() } catch {}
+    expect(spawnSync).toHaveBeenCalledWith(
+      'python3',
+      ['-m', 'aidash', 'cost', '--json'],
+      { stdio: 'inherit' }
+    )
+  })
+
+  it('App renders empty when --json is in args', async () => {
+    const { App } = await import('./cli.js')
+    const { lastFrame } = render(React.createElement(App, { args: ['cost', '--json'] }))
     expect((lastFrame() ?? '').trim()).toBe('')
   })
 })
