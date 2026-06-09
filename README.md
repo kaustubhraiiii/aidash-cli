@@ -4,8 +4,9 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/node-18+-339933?logo=node.js&logoColor=white" alt="Node 18+">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
-  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version 0.1.0">
+  <img src="https://img.shields.io/badge/version-0.2.0-blue" alt="Version 0.2.0">
 </p>
 
 ---
@@ -22,8 +23,14 @@ aidash auto-detects which agents are installed. No API keys, no config.
 
 ## Installation
 
+**Python engine** (required):
 ```bash
 pip install aidash
+```
+
+**Ink terminal UI** (optional, for interactive views):
+```bash
+npm install -g aidash-ui
 ```
 
 ### Development
@@ -32,15 +39,32 @@ pip install aidash
 git clone https://github.com/kaustubhraiiii/aidash.git
 cd aidash
 pip install -e .
+cd frontend && npm install && npm run build
 ```
 
 ## Quick Start
 
+**CLI (Python engine):**
 ```bash
 aidash                          # show available commands
 aidash cost --period weekly     # last 7 days of spend
 aidash score last               # rate your most recent session
 aidash search "auth"            # full-text search across sessions
+```
+
+**Ink interactive views** (requires `aidash-ui`):
+```bash
+aidash-ui cost                  # interactive cost dashboard
+aidash-ui replay last           # scrollable session timeline
+aidash-ui score --trend         # efficiency score with trend
+aidash-ui rates --compare       # model pricing comparison
+aidash-ui search "auth"         # live search results
+```
+
+**JSON output** (pipe-friendly, same data as views):
+```bash
+aidash-ui cost --json           # structured JSON envelope
+aidash-ui search "auth" --json  # use in scripts
 ```
 
 ## Commands
@@ -52,6 +76,7 @@ Unified cost dashboard across all agents.
 aidash cost
 aidash cost --period monthly --by agent
 aidash cost --agent claude_code
+aidash cost --export csv        # export to file
 ```
 
 ### `replay`
@@ -90,6 +115,26 @@ aidash search --agent claude_code "database"
 aidash search --project myapp "OAuth"
 ```
 
+## Claude Code Plugin
+
+Install the aidash slash commands directly into Claude Code:
+
+```bash
+claude /plugin marketplace add kaustubhraiiii/aidash-cli
+```
+
+This adds five slash commands to your Claude Code sessions:
+
+| Command | Description |
+|---------|-------------|
+| `/aidash:cost` | Cost breakdown with optional period/agent/project filters |
+| `/aidash:replay` | Session timeline playback |
+| `/aidash:score` | Efficiency score with trend analysis |
+| `/aidash:rates` | Per-model pricing from real usage |
+| `/aidash:search` | Full-text session search |
+
+**Requires** `pip install aidash` with Python 3 on PATH.
+
 ## Scoring Methodology
 
 | Metric                      | Weight | What it measures                                          |
@@ -108,9 +153,11 @@ aidash search --project myapp "OAuth"
 
 ## Tech Stack
 
-- **Python** 3.10+
+- **Python** 3.10+ — data engine, session parsing, cost calculation
 - **[Click](https://click.palletsprojects.com/)** 8.0+ — CLI framework
-- **[Rich](https://rich.readthedocs.io/)** 13.0+ — terminal UI
+- **TypeScript** / Node 18+ — Ink frontend
+- **[Ink](https://github.com/vadimdemedes/ink)** — React-based terminal UI
+- **[termcn](https://github.com/nicholasgasior/termcn)** — terminal component library
 
 ## Contributing
 

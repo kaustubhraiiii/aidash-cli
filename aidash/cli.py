@@ -1,5 +1,6 @@
 """Main CLI entry point with Click group."""
 
+import json
 import shutil
 from datetime import date, datetime, timedelta
 
@@ -10,6 +11,17 @@ from rich.table import Table
 from rich.text import Text
 
 from aidash.config import MODEL_PRICING, PER_MODEL_PRICING, Pricing, detect_agents
+from aidash.jsonout import (
+    build_cost_export,
+    build_cost_json,
+    build_rates_json,
+    build_replay_json,
+    build_score_export,
+    build_score_json,
+    build_search_json,
+    build_weekly_markdown,
+    envelope,
+)
 from aidash.loader import PARSER_MAP, load_all_sessions
 from aidash.models import Session
 from aidash.scoring import ScoreResult, score_session
@@ -218,13 +230,42 @@ def cli(ctx: click.Context):
     help="Group results by this field.",
 )
 @click.option("--agent", default=None, help="Filter to a specific agent.")
-def cost(period, group_by, agent):
+@click.option("--json", "json_output", is_flag=True, help="Emit JSON envelope to stdout.")
+@click.option(
+    "--export",
+    type=click.Choice(["csv", "json"], case_sensitive=False),
+    default=None,
+    help="Export raw cost data as CSV or JSON to stdout.",
+)
+@click.option("--weekly", is_flag=True, help="Emit a Markdown weekly summary to stdout.")
+def cost(period, group_by, agent, json_output, export, weekly):
     """Unified cost dashboard across all agents."""
     console = _console()
     since = _period_to_since(period)
     agents_filter = [agent] if agent else None
 
     sessions = load_all_sessions(agents=agents_filter, since=since)
+
+    if weekly:
+        click.echo(build_weekly_markdown(sessions, period=period))
+        return
+    if export:
+        click.echo(
+            build_cost_export(sessions, fmt=export, period=period, group_by=group_by)
+        )
+        return
+    if json_output:
+        data = build_cost_json(
+            sessions, period=period, group_by=group_by, agent_filter=agent
+        )
+        click.echo(
+            json.dumps(
+                envelope(
+                    "cost", data, period=period, filters={"agent": agent, "by": group_by}
+                )
+            )
+        )
+        return
 
     if not sessions:
         _no_sessions_message(
@@ -332,7 +373,8 @@ def _cost_grouped(
 
 @cli.command()
 @click.argument("target", default="last")
-def replay(target):
+@click.option("--json", "json_output", is_flag=True, help="Emit JSON envelope to stdout.")
+def replay(target, json_output):
     """Play back a coding session as a terminal timeline.
 
     TARGET can be "last", "today", or a session ID substring.
@@ -345,6 +387,11 @@ def replay(target):
     else:
         sessions = load_all_sessions()
         filters = None
+
+    if json_output:
+        data = build_replay_json(sessions, target=target)
+        click.echo(json.dumps(envelope("replay", data, filters={"target": target})))
+        return
 
     if not sessions:
         _no_sessions_message(console, filters=filters)
@@ -441,12 +488,36 @@ def _render_session(console: Console, session: Session) -> None:
 @cli.command()
 @click.argument("target", default="last")
 @click.option("--trend", is_flag=True, help="Show week-over-week score trend.")
-def score(target, trend):
+@click.option("--json", "json_output", is_flag=True, help="Emit JSON envelope to stdout.")
+@click.option(
+    "--export",
+    type=click.Choice(["csv", "json"], case_sensitive=False),
+    default=None,
+    help="Export raw score data as CSV or JSON to stdout.",
+)
+def score(target, trend, json_output, export):
     """Rate your sessions on a 0-100 efficiency scale.
 
     TARGET can be "last", "today", "all", or a session ID substring.
     """
     console = _console()
+
+    if json_output or export:
+        sessions = load_all_sessions()
+        if json_output:
+            data = build_score_json(sessions, target=target, trend=trend)
+            click.echo(
+                json.dumps(
+                    envelope(
+                        "score", data, filters={"target": target, "trend": trend}
+                    )
+                )
+            )
+        else:
+            click.echo(
+                build_score_export(sessions, fmt=export, target=target, trend=trend)
+            )
+        return
 
     if trend:
         _score_trend(console)
@@ -588,11 +659,21 @@ def _score_trend(console: Console) -> None:
     default="all",
     help="Time period to analyze.",
 )
-def rates(compare, period):
+@click.option("--json", "json_output", is_flag=True, help="Emit JSON envelope to stdout.")
+def rates(compare, period, json_output):
     """Compare pricing across models and agents."""
     console = _console()
     since = _period_to_since(period)
     sessions = load_all_sessions(since=since)
+
+    if json_output:
+        data = build_rates_json(sessions, period=period, compare=compare)
+        click.echo(
+            json.dumps(
+                envelope("rates", data, period=period, filters={"compare": compare})
+            )
+        )
+        return
 
     if not sessions:
         _no_sessions_message(console, filters={"period": period})
@@ -769,7 +850,8 @@ def _resolve_model_pricing(model: str, sessions: list[Session]) -> Pricing:
 @click.option("--agent", default=None, help="Filter to a specific agent.")
 @click.option("--project", default=None, help="Filter by project name (substring).")
 @click.option("--limit", default=10, help="Max results to show.", show_default=True)
-def search(query, agent, project, limit):
+@click.option("--json", "json_output", is_flag=True, help="Emit JSON envelope to stdout.")
+def search(query, agent, project, limit, json_output):
     """Full-text search across all sessions.
 
     QUERY is a required search term matched against user messages and tool names.
@@ -777,6 +859,21 @@ def search(query, agent, project, limit):
     console = _console()
     agents_filter = [agent] if agent else None
     sessions = load_all_sessions(agents=agents_filter, project=project)
+
+    if json_output:
+        data = build_search_json(
+            sessions, query=query, agent_filter=agent, project=project, limit=limit
+        )
+        click.echo(
+            json.dumps(
+                envelope(
+                    "search",
+                    data,
+                    filters={"agent": agent, "project": project, "query": query},
+                )
+            )
+        )
+        return
 
     query_lower = query.lower()
     scored: list[tuple[int, Session, str]] = []

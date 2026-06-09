@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aidash"
-version = "0.1.0"
+version = "0.2.0"
 description = "Track usage, costs, and efficiency across AI coding agents"
 readme = "README.md"
 license = { text = "MIT" }
@@ -27,6 +27,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/kaustubhraiiii/aidash"
 Repository = "https://github.com/kaustubhraiiii/aidash"
@@ -36,3 +41,6 @@ aidash = "aidash.cli:cli"
 
 [tool.setuptools.packages.find]
 include = ["aidash*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

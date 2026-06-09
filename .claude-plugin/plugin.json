@@ -1,0 +1,12 @@
+{
+  "name": "aidash",
+  "description": "Track usage, costs, and efficiency across AI coding agents (Claude Code, Gemini CLI, Codex)",
+  "version": "0.2.0",
+  "author": {
+    "name": "Kaustubh Rai",
+    "url": "https://github.com/kaustubhraiiii"
+  },
+  "repository": "https://github.com/kaustubhraiiii/aidash-cli",
+  "license": "MIT",
+  "commands": "./commands"
+}

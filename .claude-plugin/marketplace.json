@@ -1,0 +1,14 @@
+{
+  "name": "aidash",
+  "owner": {
+    "name": "Kaustubh Rai",
+    "url": "https://github.com/kaustubhraiiii"
+  },
+  "plugins": [
+    {
+      "name": "aidash",
+      "source": "kaustubhraiiii/aidash-cli",
+      "description": "Track usage, costs, and efficiency across AI coding agents (Claude Code, Gemini CLI, Codex)"
+    }
+  ]
+}

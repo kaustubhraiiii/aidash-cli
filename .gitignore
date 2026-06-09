@@ -34,3 +34,9 @@ htmlcov/
 
 # Environment
 .env
+
+# Node / frontend
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.gstack/
