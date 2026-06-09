@@ -1,5 +1,5 @@
 {
-  "name": "aidash",
+  "name": "aidash-ui",
   "version": "0.2.0",
   "description": "Ink/TypeScript frontend for aidash",
   "type": "module",
