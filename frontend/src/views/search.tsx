@@ -135,6 +135,7 @@ export function SearchView({ args }: { args: string[] }): React.JSX.Element {
         setData(result);
       })
       .catch((e: unknown) => {
+        process.exitCode = 1;
         setError(e as EngineError);
       });
   }, []);

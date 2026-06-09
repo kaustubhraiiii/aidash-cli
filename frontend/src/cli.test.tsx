@@ -118,6 +118,19 @@ describe('cli App routing', () => {
     expect(frame).toMatch(/Python not found/)
   })
 
+  it('sets process.exitCode to 1 when engine throws EngineError (regression: was 0)', async () => {
+    const origExitCode = process.exitCode
+    process.exitCode = 0
+    const { runEngine } = await import('./engine.js')
+    vi.mocked(runEngine).mockRejectedValue(
+      new EngineError('python_not_found', 'Python not found', {})
+    )
+    render(React.createElement(App, { args: ['cost'] }))
+    await vi.runAllTimersAsync()
+    expect(process.exitCode).toBe(1)
+    process.exitCode = origExitCode as number | undefined
+  })
+
   it('does not render Ink when --json flag is present', async () => {
     // App with --json in args returns null, so the frame is empty/null
     const { lastFrame } = render(React.createElement(App, { args: ['cost', '--json'] }))

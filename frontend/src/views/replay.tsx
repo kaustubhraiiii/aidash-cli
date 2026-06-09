@@ -60,6 +60,7 @@ export function ReplayView({ args }: { args: string[] }) {
         setLoading(false);
       })
       .catch((e: unknown) => {
+        process.exitCode = 1;
         setError(e as EngineError);
         setLoading(false);
       });
