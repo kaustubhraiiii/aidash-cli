@@ -2,6 +2,7 @@ import React from "react";
 import { render, Box, Text } from "ink";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { realpathSync } from "node:fs";
 import { EventEmitter } from "node:events";
 import minimist from "minimist";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -151,8 +152,13 @@ export function main(): void {
 }
 
 // Only run main when this file is the entry point (not when imported in tests).
-// Compare the resolved path of this module against process.argv[1].
+// Resolve symlinks on both sides so global npm installs (where process.argv[1]
+// is the /usr/local/bin symlink) match the real file path from import.meta.url.
 const __filename = fileURLToPath(import.meta.url);
-if (process.argv[1] === __filename) {
-  main();
+try {
+  if (realpathSync(process.argv[1]) === __filename) {
+    main();
+  }
+} catch {
+  // argv[1] may not exist in some test runners — safe to ignore
 }
