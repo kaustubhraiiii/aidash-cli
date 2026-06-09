@@ -107,14 +107,23 @@ export function main(): void {
 
   // --json passthrough: skip Ink entirely
   if (rawArgs.includes("--json")) {
-    const jsonParsed = minimist(rawArgs.filter((a) => a !== "--json"));
+    const withoutJson = rawArgs.filter((a) => a !== "--json");
+    const jsonParsed = minimist(withoutJson);
     const command = (jsonParsed._[0] as string | undefined) ?? "cost";
-    const filteredArgs = rawArgs.filter((a) => a !== "--json" && a !== command);
+    // Remove only the first positional occurrence of the command by index,
+    // not all occurrences — an arg value may coincidentally equal the command name.
+    const cmdIdx = withoutJson.indexOf(command);
+    const filteredArgs = withoutJson.filter((_, i) => i !== cmdIdx);
     const result = spawnSync(
       PYTHON_BIN,
       ["-m", "aidash", command, ...filteredArgs, "--json"],
       { stdio: "inherit" },
     );
+    if (result.error) {
+      process.stderr.write(
+        `aidash: could not start Python ("${PYTHON_BIN}"): ${result.error.message}\n`,
+      );
+    }
     process.exit(result.status ?? 1);
     return;
   }

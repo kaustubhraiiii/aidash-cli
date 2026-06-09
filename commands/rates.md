@@ -5,7 +5,7 @@ description: Show per-model pricing from real usage. Flags: --period [weekly|mon
 ## Pre-flight
 
 ```bash
-python -m aidash --version 2>&1
+python3 -m aidash --version 2>&1
 ```
 
 If it fails, stop and tell the user:
@@ -14,7 +14,7 @@ If it fails, stop and tell the user:
 ## Fetch data
 
 ```bash
-python -m aidash rates --json $ARGUMENTS 2>&1
+python3 -m aidash rates --json $ARGUMENTS 2>&1
 ```
 
 Parse stdout as JSON envelope (`schema_version`, `ok`, `data`, `error`).

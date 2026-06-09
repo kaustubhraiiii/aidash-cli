@@ -212,7 +212,7 @@ export interface ScoreOptions {
 }
 
 export interface RatesOptions {
-  period?: "today" | "weekly" | "monthly" | "all";
+  period?: "weekly" | "monthly" | "all"; // rates CLI does not support "today"
   compare?: boolean;
 }
 

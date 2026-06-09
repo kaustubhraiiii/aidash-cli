@@ -5,7 +5,7 @@ description: Play back a coding session as a prose timeline. Args: [last|today|<
 ## Pre-flight
 
 ```bash
-python -m aidash --version 2>&1
+python3 -m aidash --version 2>&1
 ```
 
 If it fails, stop and tell the user:
@@ -14,7 +14,7 @@ If it fails, stop and tell the user:
 ## Fetch data
 
 ```bash
-python -m aidash replay --json $ARGUMENTS 2>&1
+python3 -m aidash replay --json $ARGUMENTS 2>&1
 ```
 
 Parse stdout as JSON envelope (`schema_version`, `ok`, `data`, `error`).

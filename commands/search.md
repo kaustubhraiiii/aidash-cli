@@ -5,7 +5,7 @@ description: Search sessions by keyword. Args: <query> [--agent <name>] [--proje
 ## Pre-flight
 
 ```bash
-python -m aidash --version 2>&1
+python3 -m aidash --version 2>&1
 ```
 
 If it fails, stop and tell the user:
@@ -14,7 +14,7 @@ If it fails, stop and tell the user:
 ## Fetch data
 
 ```bash
-python -m aidash search --json $ARGUMENTS 2>&1
+python3 -m aidash search --json $ARGUMENTS 2>&1
 ```
 
 `$ARGUMENTS` must start with the search query (e.g. `auth --agent claude_code`). The query is required — if `$ARGUMENTS` is empty, tell the user: "Provide a search query: `/aidash:search <query>`"

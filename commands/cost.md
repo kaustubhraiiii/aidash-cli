@@ -6,7 +6,7 @@ description: Show AI spending breakdown by agent, project, or model. Flags: --pe
 
 Run this first:
 ```bash
-python -m aidash --version 2>&1
+python3 -m aidash --version 2>&1
 ```
 
 If the command fails (exit code non-zero or "No module named"), stop and tell the user:
@@ -15,7 +15,7 @@ If the command fails (exit code non-zero or "No module named"), stop and tell th
 ## Fetch data
 
 ```bash
-python -m aidash cost --json $ARGUMENTS 2>&1
+python3 -m aidash cost --json $ARGUMENTS 2>&1
 ```
 
 Parse the stdout as JSON. The envelope shape is:

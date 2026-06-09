@@ -76,6 +76,33 @@ describe('--json spawnSync passthrough', () => {
     )
   })
 
+  it('does not strip arg values that happen to match command name', async () => {
+    process.argv = ['node', '/path/cli.js', 'search', 'auth', '--agent', 'search', '--json']
+    const { spawnSync } = await import('node:child_process')
+    const { main } = await import('./cli.js')
+    try { main() } catch {}
+    expect(spawnSync).toHaveBeenCalledWith(
+      'python3',
+      ['-m', 'aidash', 'search', 'auth', '--agent', 'search', '--json'],
+      { stdio: 'inherit' }
+    )
+  })
+
+  it('writes to stderr and exits 1 when spawnSync returns an error', async () => {
+    const enoentError = Object.assign(new Error('spawn python3 ENOENT'), { code: 'ENOENT' })
+    vi.mocked((await import('node:child_process')).spawnSync).mockReturnValueOnce({
+      status: null,
+      error: enoentError,
+    } as ReturnType<typeof import('node:child_process').spawnSync>)
+    process.argv = ['node', '/path/cli.js', 'cost', '--json']
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    const { main } = await import('./cli.js')
+    try { main() } catch {}
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('could not start Python'))
+    expect(mockExit).toHaveBeenCalledWith(1)
+    stderrSpy.mockRestore()
+  })
+
   it('App renders empty when --json is in args', async () => {
     const { App } = await import('./cli.js')
     const { lastFrame } = render(React.createElement(App, { args: ['cost', '--json'] }))
