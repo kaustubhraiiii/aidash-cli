@@ -26,7 +26,7 @@ from aidash.loader import PARSER_MAP, load_all_sessions
 from aidash.models import Session
 from aidash.scoring import ScoreResult, score_session
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 BRAND_GREEN = "#5CB85C"
 
 LOGO = (
